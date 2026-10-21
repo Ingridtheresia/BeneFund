@@ -1,13 +1,110 @@
 <?php
+
 namespace App\Models;
+
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
-class Campaign extends Model {
- protected $fillable=['user_id','title','category','location','description','target','deadline','image_url','status'];
- protected $casts=['deadline'=>'date'];
- public function user(){return $this->belongsTo(User::class);}
- public function donations(){return $this->hasMany(Donation::class);}
- public function updates(){return $this->hasMany(CampaignUpdate::class)->latest();}
- public function expenses(){return $this->hasMany(Expense::class)->latest();}
- public function getRaisedAttribute(){return (int)$this->donations()->where('status','paid')->sum('amount');}
- public function getPercentAttribute(){return $this->target>0?min(100,round($this->raised/$this->target*100)):0;}
+use Illuminate\Support\Facades\DB;
+
+class Campaign extends Model
+{
+    public const CATEGORIES = ['Bencana', 'Pendidikan', 'Kesehatan', 'Masjid', 'Panti Asuhan', 'Sosial', 'Lingkungan'];
+
+    protected $fillable = ['user_id', 'title', 'category', 'location', 'description', 'target', 'deadline', 'image_url', 'status'];
+
+    protected $casts = ['deadline' => 'immutable_date', 'target' => 'integer', 'user_id' => 'integer'];
+
+    public function user()
+    {
+        return $this->belongsTo(User::class);
+    }
+
+    public function donations()
+    {
+        return $this->hasMany(Donation::class);
+    }
+
+    public function updates()
+    {
+        return $this->hasMany(CampaignUpdate::class)->latest()->orderByDesc('id');
+    }
+
+    public function expenses()
+    {
+        return $this->hasMany(Expense::class)->latest('spent_at')->orderByDesc('id');
+    }
+
+    public function disbursements()
+    {
+        return $this->hasMany(Disbursement::class);
+    }
+
+    public function scopeApproved(Builder $query): Builder
+    {
+        return $query->where('status', 'approved');
+    }
+
+    public function scopeWithFundingTotals(Builder $query): Builder
+    {
+        return $query
+            ->withSum(['donations as raised_total' => fn (Builder $donations) => $donations->whereIn('status', ['paid', 'partially_refunded'])], DB::raw(Donation::NET_AMOUNT_SQL))
+            ->withSum('expenses as spent_total', 'amount')
+            ->withSum(['disbursements as reserved_total' => fn (Builder $disbursements) => $disbursements->whereIn('status', Disbursement::RESERVED_STATUSES)], 'amount')
+            ->withSum(['disbursements as confirmed_total' => fn (Builder $disbursements) => $disbursements->where('status', 'received')], 'amount');
+    }
+
+    public function getRaisedAttribute(): int
+    {
+        return array_key_exists('raised_total', $this->attributes)
+            ? (int) $this->attributes['raised_total']
+            : (int) $this->donations()->whereIn('status', ['paid', 'partially_refunded'])->sum(DB::raw(Donation::NET_AMOUNT_SQL));
+    }
+
+    public function getSpentAttribute(): int
+    {
+        return array_key_exists('spent_total', $this->attributes)
+            ? (int) $this->attributes['spent_total']
+            : (int) $this->expenses()->sum('amount');
+    }
+
+    public function getAvailableAttribute(): int
+    {
+        return $this->raised - $this->spent - $this->reserved;
+    }
+
+    public function getReservedAttribute(): int
+    {
+        return array_key_exists('reserved_total', $this->attributes)
+            ? (int) $this->attributes['reserved_total']
+            : (int) $this->disbursements()->whereIn('status', Disbursement::RESERVED_STATUSES)->sum('amount');
+    }
+
+    public function getConfirmedAttribute(): int
+    {
+        return array_key_exists('confirmed_total', $this->attributes)
+            ? (int) $this->attributes['confirmed_total']
+            : (int) $this->disbursements()->where('status', 'received')->sum('amount');
+    }
+
+    public function fundingSummary(): array
+    {
+        $raised = $this->raised;
+        $spent = $this->spent;
+        $reserved = $this->reserved;
+
+        return [
+            'raised' => $raised, 'spent' => $spent, 'reserved' => $reserved,
+            'available' => $raised - $spent - $reserved, 'confirmed' => $this->confirmed,
+        ];
+    }
+
+    public function getPercentAttribute(): int
+    {
+        return $this->target > 0 ? min(100, (int) round($this->raised / $this->target * 100)) : 0;
+    }
+
+    public function getIsOpenAttribute(): bool
+    {
+        return $this->status === 'approved' && $this->deadline?->endOfDay()->isFuture();
+    }
 }

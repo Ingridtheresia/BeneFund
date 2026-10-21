@@ -58,7 +58,7 @@
     <footer class="footer">
         <div class="wrap">
             <b class="footer-brand">♥ BeneFund</b>
-            <p>Every Gift, A Real Impact. <span>Demo akademik · pembayaran simulasi.</span></p>
+            <p>Every Gift, A Real Impact. <span>Pembayaran uji coba melalui Midtrans Sandbox.</span></p>
         </div>
     </footer>
     <script src="{{ asset('js/navigation.js') }}?v={{ filemtime(public_path('js/navigation.js')) }}" defer></script>
