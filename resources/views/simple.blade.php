@@ -1,0 +1,1 @@
+@extends('layouts.app')@section('title',$title)@section('content')<div class="wrap section"><div class="panel"><h1>{{ $title }}</h1><p style="line-height:1.9">{{ $description }}</p><a class="btn" href="{{ route('campaigns') }}">Jelajahi Campaign</a></div></div>@endsection
