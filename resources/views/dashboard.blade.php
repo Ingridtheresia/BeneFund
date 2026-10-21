@@ -6,6 +6,7 @@
     <p class="muted">Dashboard {{ ucfirst(auth()->user()->role) }}</p>
     <div class="actions">
         <a class="btn" href="{{ route('donations.history') }}">Riwayat Donasi</a>
+        <a class="btn outline" href="{{ route('disbursements.index') }}">Penyaluran Donasi</a>
         <a class="btn outline" href="{{ route('favorites') }}">Favorit</a>
         <a class="btn outline" href="{{ route('profile') }}">Profil</a>
         @if(in_array(auth()->user()->role, ['fundraiser', 'admin']))<a class="btn" href="{{ route('manage.campaigns') }}">Kelola Campaign</a>@endif
@@ -16,6 +17,11 @@
             <div class="stat"><strong>Rp {{ number_format($donatedTotal, 0, ',', '.') }}</strong>Total Donasi Bersih</div>
             <div class="stat"><strong>{{ $donationCount }}</strong>Donasi Berhasil</div>
             <div class="stat"><strong>{{ $campaignCount }}</strong>Campaign Saya</div>
+        </div>
+        <div class="panel" style="margin-top:22px">
+            <h2>Terima dan Salurkan Dana</h2>
+            <p>Jika Anda ditunjuk sebagai penerima, periksa penyaluran yang ditujukan ke akun ini. Setelah admin melaporkan transfer dan dana masuk ke rekening Anda, buka detail untuk mengonfirmasi penerimaan.</p>
+            <a class="btn outline" href="{{ route('disbursements.index') }}">Lihat Penyaluran & Penerimaan</a>
         </div>
         <div class="panel" style="margin-top:22px">
             <h2>Aktivitas Donasi Terbaru</h2>

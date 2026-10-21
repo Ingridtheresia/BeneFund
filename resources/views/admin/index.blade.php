@@ -11,8 +11,10 @@
     <p class="actions">
         <a class="btn outline" href="{{ route('admin.users') }}">Kelola Pengguna</a>
         <a class="btn outline" href="{{ route('admin.transactions') }}">Semua Transaksi</a>
+        <a class="btn" href="{{ route('disbursements.index') }}">Kelola Penyaluran</a>
         <a class="btn outline" href="{{ route('transparency') }}">Laporan</a>
     </p>
+    <p class="muted">Pada penyaluran, periksa pengajuan, lakukan transfer bank secara manual, lalu unggah bukti. Penerima mengonfirmasi dana dari akunnya sendiri.</p>
     <div class="panel">
         <h2>Campaign Menunggu Verifikasi</h2>
         <div class="table-scroll">

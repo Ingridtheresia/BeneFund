@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Models\Campaign;
-use App\Models\Donation;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -95,30 +94,8 @@ class CampaignController extends Controller
     public function expense(Request $request, Campaign $campaign)
     {
         $this->authorizeOwner($campaign);
-        $fields = $request->validate([
-            'title' => ['required', 'string', 'max:150'],
-            'amount' => ['required', 'integer', 'min:1', 'max:999999999999'],
-            'description' => ['nullable', 'string', 'max:2000'],
-            'spent_at' => ['required', 'date_format:Y-m-d', 'before_or_equal:today'],
+        throw ValidationException::withMessages([
+            'disbursement' => 'Pengeluaran harus melalui alur Salurkan Donasi agar persetujuan, bukti transfer, dan penerimaan dana tercatat.',
         ]);
-
-        DB::transaction(function () use ($campaign, $fields) {
-            // Use the same campaign lock as payment reconciliation to serialize ledger changes.
-            $locked = Campaign::whereKey($campaign->id)->lockForUpdate()->firstOrFail();
-            $this->authorizeOwner($locked);
-            if ($locked->status !== 'approved') {
-                throw ValidationException::withMessages(['campaign' => 'Campaign harus disetujui sebelum mencatat pengeluaran.']);
-            }
-
-            $raised = (int) $locked->donations()->whereIn('status', ['paid', 'partially_refunded'])->sum(DB::raw(Donation::NET_AMOUNT_SQL));
-            $spent = (int) $locked->expenses()->sum('amount');
-            if ($fields['amount'] > $raised - $spent) {
-                throw ValidationException::withMessages(['amount' => 'Pengeluaran melebihi sisa dana yang tersedia.']);
-            }
-
-            $locked->expenses()->create($fields);
-        }, 3);
-
-        return back()->with('ok', 'Pengeluaran dicatat.');
     }
 }

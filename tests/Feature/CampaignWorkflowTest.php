@@ -5,9 +5,13 @@ namespace Tests\Feature;
 use App\Models\Campaign;
 use App\Models\Donation;
 use App\Models\User;
+use App\Services\DisbursementService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 use Tests\TestCase;
 
 class CampaignWorkflowTest extends TestCase
@@ -145,7 +149,7 @@ class CampaignWorkflowTest extends TestCase
         $this->get(route('news'))->assertOk()->assertSee('Berita publik')->assertDontSee('Berita rahasia');
     }
 
-    public function test_expenses_only_use_settled_net_funds_and_cannot_exceed_the_balance(): void
+    public function test_disbursements_only_use_settled_net_funds_and_cannot_exceed_the_balance(): void
     {
         $owner = $this->user();
         $campaign = $this->campaign($owner);
@@ -153,17 +157,37 @@ class CampaignWorkflowTest extends TestCase
         $this->donation($campaign, ['amount' => 100000, 'status' => 'partially_refunded', 'refunded_amount' => 25000]);
         $this->donation($campaign, ['amount' => 900000, 'status' => 'pending', 'paid_at' => null]);
         $this->donation($campaign, ['amount' => 900000, 'status' => 'refunded', 'refunded_amount' => 900000, 'paid_at' => null]);
-        $payload = ['title' => 'Beli buku', 'amount' => 175000, 'spent_at' => today()->format('Y-m-d')];
-
-        $this->actingAs($owner)->post(route('manage.expenses', $campaign), $payload)->assertSessionHasNoErrors();
+        Storage::fake('local');
+        $recipient = $this->user('donor');
+        $fields = [
+            'request_key' => (string) Str::uuid(), 'recipient_email' => $recipient->email,
+            'recipient_label' => 'Penerima bantuan sekolah', 'title' => 'Beli buku',
+            'recipient_bank' => 'BCA', 'recipient_account_name' => 'Penerima Bantuan',
+            'recipient_account_number' => '1234567890', 'amount' => 175000,
+        ];
+        $service = app(DisbursementService::class);
+        $disbursement = $service->request($campaign, $owner, $fields);
+        $this->assertSame(175000, $campaign->fresh()->reserved);
+        $this->assertSame(0, $campaign->fresh()->available);
+        $this->assertDatabaseCount('expenses', 0);
+        try {
+            $service->request($campaign, $owner, array_replace($fields, ['request_key' => (string) Str::uuid(), 'amount' => 1]));
+            $this->fail('Pengajuan yang melebihi sisa saldo harus ditolak.');
+        } catch (ValidationException $exception) {
+            $this->assertArrayHasKey('amount', $exception->errors());
+        }
+        $admin = $this->user('admin');
+        $service->approve($disbursement, $admin);
+        $service->transfer($disbursement, $admin, ['transfer_reference' => 'REF-'.Str::uuid()], UploadedFile::fake()->create('bukti.pdf', 10, 'application/pdf'));
         $this->assertDatabaseHas('expenses', ['campaign_id' => $campaign->id, 'amount' => 175000]);
-        $this->post(route('manage.expenses', $campaign), array_replace($payload, ['amount' => 1]))->assertSessionHasErrors('amount');
+        $this->actingAs($owner)->post(route('manage.expenses', $campaign), ['title' => 'Beli buku', 'amount' => 1, 'spent_at' => today()->format('Y-m-d')])
+            ->assertSessionHasErrors('disbursement');
         $this->assertDatabaseCount('expenses', 1);
         $this->assertSame(175000, $campaign->fresh()->raised);
         $this->assertSame(0, $campaign->fresh()->available);
     }
 
-    public function test_private_campaigns_and_invalid_dates_cannot_create_ledger_entries(): void
+    public function test_private_campaigns_and_legacy_expenses_cannot_create_ledger_entries(): void
     {
         $owner = $this->user();
         $campaign = $this->campaign($owner, ['status' => 'pending']);
@@ -171,10 +195,10 @@ class CampaignWorkflowTest extends TestCase
         $this->actingAs($owner)->post(route('manage.updates', $campaign), ['title' => 'Berita', 'body' => 'Kegiatan'])
             ->assertSessionHasErrors('campaign');
         $this->post(route('manage.expenses', $campaign), ['title' => 'Buku', 'amount' => 50000, 'spent_at' => today()->format('Y-m-d')])
-            ->assertSessionHasErrors('campaign');
+            ->assertSessionHasErrors('disbursement');
         $campaign->update(['status' => 'approved']);
         $this->post(route('manage.expenses', $campaign), ['title' => ['invalid'], 'amount' => 50000, 'spent_at' => today()->addDay()->format('Y-m-d')])
-            ->assertSessionHasErrors(['title', 'spent_at']);
+            ->assertSessionHasErrors('disbursement');
         $this->assertDatabaseCount('expenses', 0);
         $this->assertDatabaseCount('campaign_updates', 0);
         $this->post(route('manage.updates', $campaign), ['title' => 'Kegiatan terbit', 'body' => 'Bantuan telah disalurkan.'])

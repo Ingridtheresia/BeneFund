@@ -34,6 +34,11 @@ class Campaign extends Model
         return $this->hasMany(Expense::class)->latest('spent_at')->orderByDesc('id');
     }
 
+    public function disbursements()
+    {
+        return $this->hasMany(Disbursement::class);
+    }
+
     public function scopeApproved(Builder $query): Builder
     {
         return $query->where('status', 'approved');
@@ -43,7 +48,9 @@ class Campaign extends Model
     {
         return $query
             ->withSum(['donations as raised_total' => fn (Builder $donations) => $donations->whereIn('status', ['paid', 'partially_refunded'])], DB::raw(Donation::NET_AMOUNT_SQL))
-            ->withSum('expenses as spent_total', 'amount');
+            ->withSum('expenses as spent_total', 'amount')
+            ->withSum(['disbursements as reserved_total' => fn (Builder $disbursements) => $disbursements->whereIn('status', Disbursement::RESERVED_STATUSES)], 'amount')
+            ->withSum(['disbursements as confirmed_total' => fn (Builder $disbursements) => $disbursements->where('status', 'received')], 'amount');
     }
 
     public function getRaisedAttribute(): int
@@ -62,7 +69,33 @@ class Campaign extends Model
 
     public function getAvailableAttribute(): int
     {
-        return $this->raised - $this->spent;
+        return $this->raised - $this->spent - $this->reserved;
+    }
+
+    public function getReservedAttribute(): int
+    {
+        return array_key_exists('reserved_total', $this->attributes)
+            ? (int) $this->attributes['reserved_total']
+            : (int) $this->disbursements()->whereIn('status', Disbursement::RESERVED_STATUSES)->sum('amount');
+    }
+
+    public function getConfirmedAttribute(): int
+    {
+        return array_key_exists('confirmed_total', $this->attributes)
+            ? (int) $this->attributes['confirmed_total']
+            : (int) $this->disbursements()->where('status', 'received')->sum('amount');
+    }
+
+    public function fundingSummary(): array
+    {
+        $raised = $this->raised;
+        $spent = $this->spent;
+        $reserved = $this->reserved;
+
+        return [
+            'raised' => $raised, 'spent' => $spent, 'reserved' => $reserved,
+            'available' => $raised - $spent - $reserved, 'confirmed' => $this->confirmed,
+        ];
     }
 
     public function getPercentAttribute(): int

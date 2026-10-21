@@ -120,6 +120,34 @@ Localhost dapat membuat checkout dan memeriksa status karena koneksi dimulai dar
 
 ## Fitur backend
 
+### Salurkan Donasi: transfer admin, bukti, dan konfirmasi penerima
+
+Fitur ini mencatat penyaluran yang dilakukan admin melalui bank di luar aplikasi. Pencatatan transfer tidak menjalankan API payout atau memindahkan dana secara otomatis. Lingkungan Midtrans yang digunakan proyek tetap Sandbox.
+
+1. Penerima membuat akun BeneFund terlebih dahulu. Akun penerima harus berbeda dari pengaju.
+2. Penggalang membuka campaign miliknya yang disetujui, lalu memilih **Salurkan Donasi**. Isi tujuan, nominal, nama penerima untuk publik, email akun penerima, serta data rekening.
+3. Pengajuan berstatus **Diajukan**. Sistem langsung mencadangkan saldo sehingga dana yang sama tidak dapat diajukan berkali-kali. Admin memeriksa lalu menyetujui atau menolak.
+4. Setelah disetujui, admin melakukan transfer dari banknya, kemudian mencatat referensi transfer dan mengunggah bukti JPG/PNG/WebP/PDF maksimal 5 MB. Status menjadi **Transfer dilaporkan**. Saldo dipindahkan dari cadangan ke pembukuan pengeluaran, tepat satu kali.
+5. Penerima membuka **Dashboard → Penyaluran Donasi** atau tautan detail yang dibagikan pengaju. Setelah memeriksa mutasi rekening, penerima menekan **Konfirmasi Dana Diterima**. Hanya akun penerima yang dapat melakukan konfirmasi; admin tidak dapat mengonfirmasi atas namanya.
+
+Status penyaluran dan ringkasan saldo diperiksa otomatis setiap 10 detik selama halaman aktif. Halaman campaign dan transparansi membedakan dana masuk, dana dalam pengajuan, dana keluar yang dicatat, dana yang dikonfirmasi diterima, dan dana tersedia. Pelacak campaign menampilkan 20 penyaluran terbaru; portal peserta/admin menyediakan daftar dengan pagination.
+
+Nomor rekening serta nama pemilik rekening disimpan terenkripsi. Bukti transfer berada pada penyimpanan privat dan hanya dapat diunduh pengaju, penerima, atau admin. Laporan publik hanya menampilkan nama publik, tujuan, nominal, status, dan waktu perubahan. Alasan penolakan/pembatalan serta catatan internal tidak dikirim ke endpoint publik.
+
+Pengajuan yang ditolak atau dibatalkan sebelum transfer melepaskan cadangan. Penyaluran setelah transfer tidak dapat dibatalkan lewat perubahan status biasa. Refund donasi tetap mengurangi dana bersih; sistem menolak pemrosesan baru jika cadangan tidak lagi tertutup oleh saldo. Seluruh perubahan status dicatat dalam riwayat yang tidak dapat diedit melalui aplikasi.
+
+Menu **Catat Pengeluaran** lama diganti alur pengajuan ini. Pembukuan lama tetap terbaca dan tidak dianggap sudah dikonfirmasi penerima. Endpoint pengeluaran lama menolak entri baru agar persetujuan dan bukti tidak dapat dilewati.
+
+Untuk memperbarui instalasi:
+
+```powershell
+php artisan migrate
+php artisan view:clear
+php artisan test
+```
+
+Pembuatan pengajuan tidak mengirim email atau WhatsApp otomatis. Pengaju dapat menyalin tautan detail untuk dibagikan sendiri, dan penerima memantau dari akunnya. Bukti unggahan adalah laporan admin; status penerimaan berasal dari konfirmasi penerima, bukan verifikasi otomatis oleh bank.
+
 - Autentikasi dengan password hash, session regeneration, remember me, pembatasan percobaan login, normalisasi email, dan validasi role saat registrasi.
 - Profil serta perubahan password dengan verifikasi password saat ini.
 - Campaign baru/perubahan menunggu persetujuan admin; hanya pemilik atau admin yang dapat mengelola campaign.

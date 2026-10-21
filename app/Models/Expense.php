@@ -14,4 +14,9 @@ class Expense extends Model
     {
         return $this->belongsTo(Campaign::class);
     }
+
+    public function disbursement()
+    {
+        return $this->hasOne(Disbursement::class);
+    }
 }

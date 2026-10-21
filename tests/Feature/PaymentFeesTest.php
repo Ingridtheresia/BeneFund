@@ -5,11 +5,15 @@ namespace Tests\Feature;
 use App\Models\Campaign;
 use App\Models\Donation;
 use App\Models\User;
+use App\Services\DisbursementService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Factory;
 use Illuminate\Http\Client\Request;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
@@ -203,7 +207,7 @@ class PaymentFeesTest extends TestCase
         $this->assertSame(0, $donation->campaign->fresh()->raised);
     }
 
-    public function test_expense_limit_uses_net_donations_without_fees_and_clamps_refunded_principal(): void
+    public function test_disbursement_limit_uses_net_donations_without_fees_and_clamps_refunded_principal(): void
     {
         $campaign = $this->campaign();
         $this->donation([
@@ -216,13 +220,26 @@ class PaymentFeesTest extends TestCase
             'amount' => 70000, 'refunded_amount' => 20000,
         ]);
         $this->assertSame(50000, $campaign->fresh()->raised);
-        $this->actingAs($campaign->user);
-        $expense = ['title' => 'Beli perlengkapan', 'spent_at' => now()->toDateString()];
-
-        $this->postJson("/manage/campaigns/{$campaign->id}/expenses", $expense + ['amount' => 50001])
-            ->assertUnprocessable()->assertJsonValidationErrors('amount');
-        $this->post("/manage/campaigns/{$campaign->id}/expenses", $expense + ['amount' => 50000])
-            ->assertRedirect();
+        Storage::fake('local');
+        $recipient = $this->user();
+        $fields = [
+            'request_key' => (string) Str::uuid(), 'recipient_email' => $recipient->email,
+            'recipient_label' => 'Penerima bantuan sekolah', 'title' => 'Beli perlengkapan',
+            'recipient_bank' => 'BCA', 'recipient_account_name' => 'Penerima Bantuan',
+            'recipient_account_number' => '1234567890', 'amount' => 50001,
+        ];
+        $service = app(DisbursementService::class);
+        try {
+            $service->request($campaign, $campaign->user, $fields);
+            $this->fail('Biaya admin dan donasi yang telah dikembalikan tidak boleh disalurkan.');
+        } catch (ValidationException $exception) {
+            $this->assertArrayHasKey('amount', $exception->errors());
+        }
+        $disbursement = $service->request($campaign, $campaign->user, array_replace($fields, ['amount' => 50000]));
+        $this->assertSame(50000, $campaign->fresh()->reserved);
+        $admin = $this->user(['role' => 'admin']);
+        $service->approve($disbursement, $admin);
+        $service->transfer($disbursement, $admin, ['transfer_reference' => 'REF-'.Str::uuid()], UploadedFile::fake()->create('bukti.pdf', 10, 'application/pdf'));
 
         $this->assertSame(0, $campaign->fresh()->available);
         $this->assertDatabaseCount('expenses', 1);

@@ -26,8 +26,10 @@
                 @endforelse
                 {{ $updates->links() }}
             </div>
+            @include('disbursements.public-tracker')
             <div class="panel">
-                <h2>Laporan Penyaluran Dana</h2>
+                <h2>Catatan Pembukuan Manual</h2>
+                <p class="muted">Catatan pengeluaran dari pembukuan. Catatan ini tidak menyatakan bahwa penerima sudah mengonfirmasi dana. Lihat pelacakan penyaluran di atas untuk memeriksa konfirmasi penerima.</p>
                 <div class="table-scroll">
                     <table>
                         <tr><th>Tanggal</th><th>Keterangan</th><th>Nominal</th></tr>
@@ -38,13 +40,11 @@
                                 <td>Rp {{ number_format($expense->amount, 0, ',', '.') }}</td>
                             </tr>
                         @empty
-                            <tr><td colspan="3">Belum ada pengeluaran.</td></tr>
+                            <tr><td colspan="3">Belum ada catatan pembukuan manual.</td></tr>
                         @endforelse
                     </table>
                 </div>
                 {{ $expenses->links() }}
-                <p>Total disalurkan: <b>Rp {{ number_format($campaign->spent, 0, ',', '.') }}</b></p>
-                <p>Sisa dana: <b>Rp {{ number_format($campaign->available, 0, ',', '.') }}</b></p>
             </div>
             @auth
                 @if(auth()->id() === $campaign->user_id || auth()->user()->role === 'admin')
@@ -59,17 +59,14 @@
                                 <button class="btn">Terbitkan Update</button>
                             </form>
                             <hr>
-                            <h3>Catat Pengeluaran</h3>
-                            <form method="POST" action="{{ route('manage.expenses', $campaign) }}">
-                                @csrf
-                                <div class="field"><label for="expense-title">Judul</label><input id="expense-title" name="title" maxlength="150" required></div>
-                                <div class="field"><label for="expense-amount">Nominal (Rp)</label><input id="expense-amount" type="number" name="amount" min="1" max="{{ max(0, $campaign->available) }}" required></div>
-                                <div class="field"><label for="expense-date">Tanggal</label><input id="expense-date" type="date" name="spent_at" max="{{ today()->format('Y-m-d') }}" required></div>
-                                <div class="field"><label for="expense-description">Keterangan</label><textarea id="expense-description" name="description" maxlength="2000"></textarea></div>
-                                <button class="btn">Simpan Pengeluaran</button>
-                            </form>
+                            <h3>Salurkan Dana ke Penerima</h3>
+                            <p>Ajukan penyaluran untuk diperiksa admin. Admin melakukan transfer manual dan mengunggah bukti, lalu penerima mengonfirmasi dana dari akunnya.</p>
+                            <div class="actions">
+                                <a class="btn" href="{{ route('disbursements.create', $campaign) }}">Salurkan Donasi</a>
+                                <a class="btn outline" href="{{ route('disbursements.index') }}">Kelola Penyaluran</a>
+                            </div>
                         @else
-                            <p>Update kegiatan dan pencatatan pengeluaran tersedia setelah campaign disetujui.</p>
+                            <p>Update kegiatan dan pengajuan penyaluran tersedia setelah campaign disetujui.</p>
                         @endif
                     </div>
                 @endif

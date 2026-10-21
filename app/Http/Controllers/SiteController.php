@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Campaign;
 use App\Models\CampaignUpdate;
+use App\Models\Disbursement;
 use App\Models\Donation;
 use App\Models\Expense;
 use Illuminate\Database\Eloquent\Builder;
@@ -51,12 +52,18 @@ class SiteController extends Controller
         abort_unless($campaign->status === 'approved' || (auth()->check() && (auth()->id() === $campaign->user_id || auth()->user()->role === 'admin')), 404);
         $campaign->load('user')->loadSum([
             'donations as raised_total' => fn (Builder $donations) => $donations->whereIn('status', ['paid', 'partially_refunded']),
-        ], DB::raw(Donation::NET_AMOUNT_SQL))->loadSum('expenses as spent_total', 'amount');
+        ], DB::raw(Donation::NET_AMOUNT_SQL))->loadSum('expenses as spent_total', 'amount')->loadSum([
+            'disbursements as reserved_total' => fn (Builder $disbursements) => $disbursements->whereIn('status', Disbursement::RESERVED_STATUSES),
+        ], 'amount')->loadSum([
+            'disbursements as confirmed_total' => fn (Builder $disbursements) => $disbursements->where('status', 'received'),
+        ], 'amount');
 
         return view('campaign.show', [
             'campaign' => $campaign,
             'updates' => $campaign->updates()->paginate(10, ['*'], 'updates_page')->withQueryString(),
             'expenses' => $campaign->expenses()->paginate(15, ['*'], 'expenses_page')->withQueryString(),
+            'disbursements' => $campaign->disbursements()->with('events')->latest()->orderByDesc('id')->limit(20)->get(),
+            'fundingSummary' => $campaign->fundingSummary(),
         ]);
     }
 
@@ -67,11 +74,36 @@ class SiteController extends Controller
 
     public function transparency()
     {
+        $summary = $this->publicFundingSummary();
+
         return view('transparency', [
             'campaigns' => Campaign::approved()->withFundingTotals()->latest()->orderByDesc('id')->paginate(20),
-            'raised' => $this->publicDonations()->sum(DB::raw(Donation::NET_AMOUNT_SQL)),
-            'spent' => Expense::whereHas('campaign', fn (Builder $campaign) => $campaign->approved())->sum('amount'),
+            'summary' => $summary,
+        ] + $summary);
+    }
+
+    public function transparencyStatus()
+    {
+        $campaigns = Campaign::approved()->withFundingTotals()->latest()->orderByDesc('id')->paginate(20);
+
+        return response()->json([
+            'summary' => $this->publicFundingSummary(),
+            'campaigns' => $campaigns->getCollection()->map(fn (Campaign $campaign) => [
+                'id' => $campaign->id, 'title' => $campaign->title, 'url' => route('campaign.show', $campaign),
+            ] + $campaign->fundingSummary())->values(),
+            'checked_at' => now()->toIso8601String(),
         ]);
+    }
+
+    private function publicFundingSummary(): array
+    {
+        $publicCampaign = fn (Builder $campaign) => $campaign->approved();
+        $raised = (int) $this->publicDonations()->sum(DB::raw(Donation::NET_AMOUNT_SQL));
+        $spent = (int) Expense::whereHas('campaign', $publicCampaign)->sum('amount');
+        $reserved = (int) Disbursement::whereIn('status', Disbursement::RESERVED_STATUSES)->whereHas('campaign', $publicCampaign)->sum('amount');
+        $confirmed = (int) Disbursement::where('status', 'received')->whereHas('campaign', $publicCampaign)->sum('amount');
+
+        return ['raised' => $raised, 'spent' => $spent, 'reserved' => $reserved, 'available' => $raised - $spent - $reserved, 'confirmed' => $confirmed];
     }
 
     public function news()

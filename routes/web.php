@@ -3,6 +3,7 @@
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CampaignController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\DisbursementController;
 use App\Http\Controllers\DonationController;
 use App\Http\Controllers\SiteController;
 use Illuminate\Support\Facades\Route;
@@ -12,6 +13,8 @@ Route::get('/campaigns', [SiteController::class, 'campaigns'])->name('campaigns'
 Route::get('/campaigns/{campaign}', [SiteController::class, 'show'])->name('campaign.show');
 Route::get('/about', [SiteController::class, 'about'])->name('about');
 Route::get('/transparency', [SiteController::class, 'transparency'])->name('transparency');
+Route::get('/transparency/status', [SiteController::class, 'transparencyStatus'])->middleware('throttle:120,1')->name('transparency.status');
+Route::get('/campaigns/{campaign}/disbursements/status', [DisbursementController::class, 'publicStatus'])->middleware('throttle:120,1')->name('campaign.disbursements');
 Route::get('/news', [SiteController::class, 'news'])->name('news');
 Route::get('/top-donors', [SiteController::class, 'topDonors'])->name('top');
 Route::get('/login', [AuthController::class, 'loginForm'])->middleware('guest')->name('login');
@@ -21,6 +24,12 @@ Route::post('/register', [AuthController::class, 'register'])->middleware(['gues
 Route::post('/payments/midtrans/notification', [DonationController::class, 'notification'])->name('payments.notification');
 Route::post('/logout', [AuthController::class, 'logout'])->middleware('auth')->name('logout');
 Route::middleware('auth')->group(function () {
+    Route::get('/disbursements', [DisbursementController::class, 'index'])->name('disbursements.index');
+    Route::get('/disbursements/{disbursement}', [DisbursementController::class, 'show'])->name('disbursements.show');
+    Route::get('/disbursements/{disbursement}/status', [DisbursementController::class, 'status'])->middleware('throttle:60,1')->name('disbursements.status');
+    Route::get('/disbursements/{disbursement}/proof', [DisbursementController::class, 'proof'])->name('disbursements.proof');
+    Route::post('/disbursements/{disbursement}/receive', [DisbursementController::class, 'receive'])->middleware('throttle:20,1')->name('disbursements.receive');
+    Route::post('/disbursements/{disbursement}/cancel', [DisbursementController::class, 'cancel'])->middleware('throttle:20,1')->name('disbursements.cancel');
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
     Route::get('/profile', [DashboardController::class, 'profile'])->name('profile');
     Route::post('/profile', [DashboardController::class, 'updateProfile'])->name('profile.update');
@@ -35,6 +44,8 @@ Route::middleware('auth')->group(function () {
     Route::post('/campaigns/{campaign}/favorite', [DashboardController::class, 'favorite'])->name('favorite');
     Route::get('/favorites', [DashboardController::class, 'favorites'])->name('favorites');
     Route::middleware('role:fundraiser,admin')->group(function () {
+        Route::get('/campaigns/{campaign}/disbursements/create', [DisbursementController::class, 'create'])->name('disbursements.create');
+        Route::post('/campaigns/{campaign}/disbursements', [DisbursementController::class, 'store'])->middleware('throttle:20,1')->name('disbursements.store');
         Route::get('/manage/campaigns', [CampaignController::class, 'index'])->name('manage.campaigns');
         Route::get('/manage/campaigns/create', [CampaignController::class, 'create'])->name('manage.create');
         Route::post('/manage/campaigns', [CampaignController::class, 'store'])->name('manage.store');
@@ -44,6 +55,9 @@ Route::middleware('auth')->group(function () {
         Route::post('/manage/campaigns/{campaign}/expenses', [CampaignController::class, 'expense'])->name('manage.expenses');
     });
     Route::middleware('role:admin')->group(function () {
+        Route::post('/disbursements/{disbursement}/approve', [DisbursementController::class, 'approve'])->middleware('throttle:30,1')->name('disbursements.approve');
+        Route::post('/disbursements/{disbursement}/reject', [DisbursementController::class, 'reject'])->middleware('throttle:30,1')->name('disbursements.reject');
+        Route::post('/disbursements/{disbursement}/transfer', [DisbursementController::class, 'transfer'])->middleware('throttle:20,1')->name('disbursements.transfer');
         Route::get('/admin', [DashboardController::class, 'admin'])->name('admin');
         Route::post('/admin/campaigns/{campaign}/approve', [DashboardController::class, 'approve'])->name('admin.approve');
         Route::post('/admin/campaigns/{campaign}/reject', [DashboardController::class, 'reject'])->name('admin.reject');
