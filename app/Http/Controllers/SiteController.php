@@ -69,7 +69,7 @@ class SiteController extends Controller
 
     public function about()
     {
-        return view('simple', ['title' => 'Tentang BeneFund', 'description' => 'BeneFund menghubungkan kebaikan dengan kebutuhan nyata melalui campaign sosial dan laporan penggunaan dana yang dapat diperiksa publik.']);
+        return view('about');
     }
 
     public function transparency()

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Campaign;
 use App\Models\Donation;
 use App\Models\User;
+use App\Services\ActivityNotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -95,6 +96,7 @@ class DashboardController extends Controller
                 throw ValidationException::withMessages(['campaign' => 'Batas waktu campaign telah berakhir. Penggalang perlu memperbarui deadline.']);
             }
             $locked->update(['status' => $status]);
+            app(ActivityNotificationService::class)->campaignModerated($locked);
         }, 3);
     }
 

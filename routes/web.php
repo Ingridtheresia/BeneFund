@@ -5,6 +5,7 @@ use App\Http\Controllers\CampaignController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DisbursementController;
 use App\Http\Controllers\DonationController;
+use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\SiteController;
 use Illuminate\Support\Facades\Route;
 
@@ -24,6 +25,10 @@ Route::post('/register', [AuthController::class, 'register'])->middleware(['gues
 Route::post('/payments/midtrans/notification', [DonationController::class, 'notification'])->name('payments.notification');
 Route::post('/logout', [AuthController::class, 'logout'])->middleware('auth')->name('logout');
 Route::middleware('auth')->group(function () {
+    Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');
+    Route::get('/notifications/status', [NotificationController::class, 'status'])->middleware('throttle:30,1')->name('notifications.status');
+    Route::post('/notifications/read-all', [NotificationController::class, 'readAll'])->name('notifications.read-all');
+    Route::post('/notifications/{notification}/read', [NotificationController::class, 'read'])->whereUuid('notification')->name('notifications.read');
     Route::get('/disbursements', [DisbursementController::class, 'index'])->name('disbursements.index');
     Route::get('/disbursements/{disbursement}', [DisbursementController::class, 'show'])->name('disbursements.show');
     Route::get('/disbursements/{disbursement}/status', [DisbursementController::class, 'status'])->middleware('throttle:60,1')->name('disbursements.status');

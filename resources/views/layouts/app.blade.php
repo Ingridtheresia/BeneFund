@@ -9,6 +9,9 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ asset('css/app.css') }}?v={{ filemtime(public_path('css/app.css')) }}">
+    <link rel="stylesheet" href="{{ asset('css/notifications.css') }}?v={{ filemtime(public_path('css/notifications.css')) }}">
+    <link rel="stylesheet" href="{{ asset('css/payments.css') }}?v={{ filemtime(public_path('css/payments.css')) }}">
+    @stack('styles')
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
@@ -16,10 +19,19 @@
     <header class="nav">
         <div class="wrap nav-inner">
             <a class="brand" href="{{ route('home') }}"><span aria-hidden="true">♥</span> BeneFund</a>
+            <div class="nav-actions">
+            @auth
+                <a class="notification-link" href="{{ route('notifications.index') }}" aria-label="Notifikasi, {{ $notificationUnreadCount }} belum dibaca" data-notification-link data-status-url="{{ route('notifications.status') }}" data-unread-count="{{ $notificationUnreadCount }}" @if(request()->routeIs('notifications.*')) aria-current="page" @endif>
+                    <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/></svg>
+                    <span class="notification-link-label">Notifikasi</span>
+                    <span class="notification-count" data-notification-count @if($notificationUnreadCount === 0) hidden @endif>{{ $notificationUnreadCount > 99 ? '99+' : $notificationUnreadCount }}</span>
+                </a>
+            @endauth
             <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="site-navigation">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
                 Menu
             </button>
+            </div>
             <nav class="links" id="site-navigation" aria-label="Navigasi utama">
                 <a href="{{ route('home') }}" @if(request()->routeIs('home')) aria-current="page" @endif>Beranda</a>
                 <a href="{{ route('campaigns') }}" @if(request()->routeIs('campaigns', 'campaign.show')) aria-current="page" @endif>Campaign</a>
@@ -62,6 +74,9 @@
         </div>
     </footer>
     <script src="{{ asset('js/navigation.js') }}?v={{ filemtime(public_path('js/navigation.js')) }}" defer></script>
+    @auth
+        <script src="{{ asset('js/notifications.js') }}?v={{ filemtime(public_path('js/notifications.js')) }}" defer></script>
+    @endauth
     <noscript><style>@media(max-width:1050px){.links{display:flex}.menu-toggle{display:none}}</style></noscript>
 </body>
 </html>

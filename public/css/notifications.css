@@ -1,0 +1,40 @@
+.nav-inner { gap: 16px; }
+.brand { order: 1; }
+.links { order: 2; gap: 15px; }
+.nav-actions { order: 3; display: flex; align-items: center; gap: 10px; }
+.nav-account { gap: 12px; padding-left: 12px; }
+.notification-link { display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-height: 42px; padding: 8px; color: var(--red); border: 1px solid var(--border); border-radius: 9px; position: relative; }
+.notification-link-label { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.notification-link:hover, .notification-link[aria-current="page"] { background: #fff0f3; }
+.notification-count { display: inline-flex; align-items: center; justify-content: center; min-width: 20px; height: 20px; padding-inline: 4px; border-radius: 12px; background: var(--red); color: #fff; font-size: 10px; font-weight: 700; }
+.notification-count[hidden], .notification-refresh[hidden] { display: none; }
+.notification-page .section-title { align-items: flex-start; }
+.notification-page h1 { margin-bottom: 12px; }
+.notification-page .section-title p:last-child { margin-bottom: 0; }
+.notification-filters { display: flex; gap: 8px; margin-bottom: 24px; border-bottom: 1px solid var(--border); }
+.notification-filters a { padding: 10px 16px; border-bottom: 3px solid transparent; font-weight: 600; }
+.notification-filters a[aria-current="page"] { border-bottom-color: var(--red); color: var(--red); }
+.notification-list { display: grid; gap: 14px; }
+.notification-item { padding: 24px; overflow-wrap: anywhere; }
+.notification-item.is-unread { border-left: 4px solid var(--red); background: #fffafb; }
+.notification-item-top, .notification-item-bottom { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.notification-item h2 { margin: 0; font-family: 'DM Sans', sans-serif; font-size: 17px; }
+.notification-item .tag { flex-shrink: 0; }
+.notification-item > p { margin: 12px 0 18px; }
+.notification-item time { font-size: 12px; }
+.notification-item .actions { gap: 16px; }
+.notification-item form { margin: 0; }
+.notification-empty { padding-block: 48px; text-align: center; }
+.notification-help { margin-top: 24px; font-size: 13px; }
+.notification-pagination { margin-top: 24px; }
+.notification-pagination nav > div:first-child { display: flex; justify-content: space-between; gap: 16px; }
+.notification-pagination nav > div:nth-child(2) { display: none; }
+@media (max-width: 1050px) {
+    .nav-actions { order: 2; margin-left: auto; }
+    .links { order: 3; }
+}
+@media (max-width: 560px) {
+    .notification-item { padding: 20px; }
+    .notification-item-top, .notification-item-bottom { flex-wrap: wrap; gap: 10px; }
+    .notification-item .actions { width: 100%; justify-content: space-between; }
+}

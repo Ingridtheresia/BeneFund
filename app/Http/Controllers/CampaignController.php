@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Campaign;
+use App\Services\ActivityNotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -45,7 +46,11 @@ class CampaignController extends Controller
 
     public function store(Request $request)
     {
-        Campaign::create($this->fields($request) + ['user_id' => auth()->id(), 'status' => 'pending']);
+        $fields = $this->fields($request);
+        DB::transaction(function () use ($fields) {
+            $campaign = Campaign::create($fields + ['user_id' => auth()->id(), 'status' => 'pending']);
+            app(ActivityNotificationService::class)->campaignSubmitted($campaign);
+        }, 3);
 
         return redirect()->route('manage.campaigns')->with('ok', 'Campaign menunggu verifikasi admin.');
     }
@@ -66,6 +71,9 @@ class CampaignController extends Controller
             $locked = Campaign::whereKey($campaign->id)->lockForUpdate()->firstOrFail();
             $this->authorizeOwner($locked);
             $locked->update($fields + ['status' => 'pending']);
+            if ($locked->wasChanged(array_merge(array_keys($fields), ['status']))) {
+                app(ActivityNotificationService::class)->campaignSubmitted($locked);
+            }
         }, 3);
 
         return redirect()->route('manage.campaigns')->with('ok', 'Perubahan menunggu verifikasi.');

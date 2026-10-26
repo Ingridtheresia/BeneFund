@@ -5,6 +5,7 @@
     <h1>Halo, {{ auth()->user()->name }}</h1>
     <p class="muted">Dashboard {{ ucfirst(auth()->user()->role) }}</p>
     <div class="actions">
+        <a class="btn outline" href="{{ route('notifications.index') }}">Notifikasi</a>
         <a class="btn" href="{{ route('donations.history') }}">Riwayat Donasi</a>
         <a class="btn outline" href="{{ route('disbursements.index') }}">Penyaluran Donasi</a>
         <a class="btn outline" href="{{ route('favorites') }}">Favorit</a>

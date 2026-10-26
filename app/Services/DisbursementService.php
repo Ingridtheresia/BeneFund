@@ -227,6 +227,7 @@ class DisbursementService
             'status' => $disbursement->status, 'actor_id' => $actor->id,
             'actor_role' => $actor->role, 'note' => $note, 'created_at' => now(),
         ]);
+        app(ActivityNotificationService::class)->disbursementChanged($disbursement);
     }
 
     private function invalid(string $field, string $message): never

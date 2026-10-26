@@ -85,7 +85,9 @@
                             $paymentMethods = config('payments.methods', []);
                             $requestedMethod = old('method', 'qris');
                             $selectedMethod = is_string($requestedMethod) && isset($paymentMethods[$requestedMethod]) ? $requestedMethod : 'qris';
-                            $selectedChannel = old('payment_channel', array_key_first($paymentMethods[$selectedMethod]['channels'] ?? []));
+                            $requestedChannel = old('payment_channel');
+                            $selectedChannel = is_string($requestedChannel) && isset($paymentMethods[$selectedMethod]['channels'][$requestedChannel])
+                                ? $requestedChannel : array_key_first($paymentMethods[$selectedMethod]['channels'] ?? []);
                             $estimatedDonation = max(0, (int) old('amount', 100000));
                             $estimatedFee = (int) ($paymentMethods[$selectedMethod]['fee'] ?? 0);
                         @endphp
@@ -100,19 +102,27 @@
                                     @endforeach
                                 </select>
                             </div>
-                            <div class="field" id="donation-channel-field">
-                                <label for="donation-channel" id="donation-channel-label">Bank / E-Wallet / QRIS</label>
-                                <select id="donation-channel" name="payment_channel" required aria-describedby="donation-channel-note">
+                            <fieldset class="field payment-channels" id="donation-channel-field" aria-describedby="donation-channel-note">
+                                <legend id="donation-channel-label">Pilih Bank / E-Wallet / QRIS</legend>
                                     @foreach($paymentMethods as $method => $details)
-                                        <optgroup label="{{ $details['label'] }}" data-method="{{ $method }}">
+                                        <div class="payment-channel-group" data-method="{{ $method }}">
+                                            <p class="payment-group-title">{{ $details['label'] }}</p>
+                                            <div class="payment-channel-grid">
                                             @foreach($details['channels'] as $channel => $channelDetails)
-                                                <option value="{{ $channel }}" data-method="{{ $method }}" @selected($selectedChannel === $channel)>{{ $channelDetails['label'] }}</option>
+                                                <label class="payment-choice" for="channel-{{ $channel }}">
+                                                    <input id="channel-{{ $channel }}" type="radio" name="payment_channel" value="{{ $channel }}" data-method="{{ $method }}" @checked($selectedChannel === $channel) required>
+                                                    <span class="payment-choice-content">
+                                                        <img src="{{ asset($channelDetails['logo']) }}" alt="" class="payment-logo" data-logo-theme="{{ $channelDetails['logo_theme'] ?? 'default' }}" width="108" height="32">
+                                                        <span>{{ $channelDetails['label'] }}</span>
+                                                    </span>
+                                                </label>
                                             @endforeach
-                                        </optgroup>
+                                            </div>
+                                        </div>
                                     @endforeach
-                                </select>
                                 <small class="muted" id="donation-channel-note">Pilih bank atau e-wallet yang sesuai dengan metode pembayaran.</small>
-                            </div>
+                                <noscript><p class="muted">Pilih kanal pada kelompok yang sama dengan metode pembayaran di atas.</p></noscript>
+                            </fieldset>
                             <div aria-live="polite" aria-atomic="true" style="padding:16px;background:var(--bg, #fff7f7);border-radius:10px;margin-bottom:16px">
                                 <div style="display:flex;justify-content:space-between;gap:12px"><span>Donasi</span><span id="donation-estimate">Rp {{ number_format($estimatedDonation, 0, ',', '.') }}</span></div>
                                 <div style="display:flex;justify-content:space-between;gap:12px;margin-top:8px"><span>Biaya admin</span><span id="donation-fee">{{ $estimatedFee > 0 ? 'Rp '.number_format($estimatedFee, 0, ',', '.') : 'Gratis' }}</span></div>

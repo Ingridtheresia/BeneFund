@@ -12,7 +12,8 @@
 
     const amount = form.querySelector('[name="amount"]');
     const method = form.querySelector('[name="method"]');
-    const channel = form.querySelector('[name="payment_channel"]');
+    const channels = Array.from(form.querySelectorAll('[name="payment_channel"]'));
+    const channelGroups = form.querySelectorAll('.payment-channel-group');
     const label = document.getElementById('donation-channel-label');
     const note = document.getElementById('donation-channel-note');
     const currency = new Intl.NumberFormat('id-ID', { maximumFractionDigits: 0 });
@@ -28,16 +29,16 @@
 
     function updateMethod() {
         const selected = method.value;
-        for (const group of channel.querySelectorAll('optgroup')) {
-            group.disabled = group.dataset.method !== selected;
-            group.hidden = group.disabled;
+        for (const group of channelGroups) {
+            group.hidden = group.dataset.method !== selected;
         }
-        for (const option of channel.options) {
+        for (const option of channels) {
             option.disabled = option.dataset.method !== selected;
-            option.hidden = option.disabled;
+            if (option.disabled) option.checked = false;
         }
-        if (!channel.selectedOptions.length || channel.selectedOptions[0].disabled) {
-            channel.value = Object.keys(methods[selected]?.channels || {})[0] || '';
+        if (!channels.some((option) => !option.disabled && option.checked)) {
+            const first = channels.find((option) => !option.disabled);
+            if (first) first.checked = true;
         }
         label.textContent = selected === 'bank' ? 'Pilih Bank' : selected === 'ewallet' ? 'Pilih E-Wallet' : 'Pembayaran QRIS';
         note.textContent = selected === 'qris'

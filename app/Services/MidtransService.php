@@ -253,11 +253,13 @@ class MidtransService
             if ($locked->gateway_transaction_id && $transactionId !== $locked->gateway_transaction_id) {
                 throw ValidationException::withMessages(['payment' => 'Identitas transaksi Midtrans tidak cocok.']);
             }
+            $previousStatus = $locked->status;
             $locked->update($changes + [
                 'status' => $status, 'gateway_status' => $gateway,
                 'gateway_fraud_status' => $fraud, 'gateway_transaction_id' => $transactionId,
                 'payment_type' => $data['payment_type'] ?? $locked->payment_type,
             ]);
+            app(ActivityNotificationService::class)->donationChanged($locked, $previousStatus);
 
             return $locked;
         });

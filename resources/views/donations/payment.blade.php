@@ -13,7 +13,12 @@
         <h1>Pembayaran Donasi</h1>
         <p>{{ $donation->campaign->title }}</p>
         <h2 style="color:var(--red)">Rp {{ number_format($donation->total_amount, 0, ',', '.') }}</h2>
-        <p>{{ $donation->payment_channel_label }}</p>
+        <div class="payment-selected-channel">
+            @if(!empty($channelConfig['logo']))
+                <img src="{{ asset($channelConfig['logo']) }}" alt="" class="payment-logo" data-logo-theme="{{ $channelConfig['logo_theme'] ?? 'default' }}" width="108" height="32">
+            @endif
+            <p>{{ $donation->payment_channel_label }}</p>
+        </div>
         <dl style="text-align:left;margin:24px 0;padding:16px;background:var(--bg, #fff7f7);border-radius:10px">
             <div style="display:flex;justify-content:space-between;gap:12px"><dt>Nominal donasi</dt><dd style="margin:0">Rp {{ number_format($donation->amount, 0, ',', '.') }}</dd></div>
             <div style="display:flex;justify-content:space-between;gap:12px;margin-top:8px"><dt>Biaya admin</dt><dd style="margin:0">{{ $donation->admin_fee > 0 ? 'Rp '.number_format($donation->admin_fee, 0, ',', '.') : 'Gratis' }}</dd></div>

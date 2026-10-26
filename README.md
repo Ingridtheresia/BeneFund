@@ -146,7 +146,29 @@ php artisan view:clear
 php artisan test
 ```
 
-Pembuatan pengajuan tidak mengirim email atau WhatsApp otomatis. Pengaju dapat menyalin tautan detail untuk dibagikan sendiri, dan penerima memantau dari akunnya. Bukti unggahan adalah laporan admin; status penerimaan berasal dari konfirmasi penerima, bukan verifikasi otomatis oleh bank.
+Pengajuan dan perubahan status mengirim notifikasi dalam aplikasi kepada pihak terkait. Notifikasi tidak mengirim email atau WhatsApp otomatis. Bukti unggahan adalah laporan admin; status penerimaan berasal dari konfirmasi penerima, bukan verifikasi otomatis oleh bank.
+
+### Notifikasi akun
+
+Ikon lonceng tersedia setelah login, termasuk pada navigasi ponsel. Buka **Notifikasi** untuk melihat aktivitas terbaru, memfilter yang belum dibaca, menandai satu notifikasi dibaca, atau menandai semuanya. Jumlah yang belum dibaca diperiksa setiap 30 detik selama halaman aktif. Jika daftar sedang terbuka, pembaruan menampilkan tautan untuk memuat ulang daftar tanpa mengganggu pembacaan.
+
+| Aktivitas | Penerima notifikasi |
+| --- | --- |
+| Status donasi berubah, termasuk gagal, kedaluwarsa, refund, dan reversal | Donatur terkait |
+| Dana donasi terverifikasi masuk atau saldo donasi disesuaikan | Pemilik campaign dan admin |
+| Penyaluran diajukan, disetujui, ditolak, dibatalkan, bukti transfer diunggah, atau dana dikonfirmasi diterima | Pengaju, penerima, admin, serta pemilik campaign |
+| Campaign diajukan atau diperbarui | Admin |
+| Campaign disetujui atau ditolak | Pemilik campaign |
+
+Notifikasi hanya dibuat untuk aktivitas baru setelah fitur dipasang. Status pembayaran mengikuti verifikasi backend Midtrans. Pengulangan status yang sama tidak membuat notifikasi baru; perubahan jumlah refund tetap menghasilkan pembaruan. Notifikasi dan transaksi disimpan dalam transaksi database yang sama, sehingga keduanya dibatalkan jika proses gagal. Satu akun yang merangkap beberapa pihak tidak mendapat notifikasi ganda untuk satu aktivitas.
+
+Notifikasi hanya dapat dibaca dan ditandai oleh akun penerimanya. Isi notifikasi tidak memuat rekening, bukti privat, catatan internal, atau identitas donatur anonim. Pemilik campaign yang bukan peserta penyaluran mendapat tautan pelacak campaign; akses bukti tetap mengikuti otorisasi peserta/admin.
+
+### Tentang dan identitas pembayaran
+
+Halaman **Tentang Kami** memuat informasi aplikasi, tujuan, fitur utama, cara kerja, serta Tim Pengembang BeneFund dan tautan repositori proyek. Logo QRIS, enam bank, GoPay, dan ShopeePay ditampilkan pada pilihan kanal dan ringkasan pembayaran. Aset resmi disimpan lokal; sumbernya dicatat di `public/images/payments/README.md`. Nama kanal tetap tersedia sebagai teks dan pilihan dapat digunakan dengan keyboard maupun tanpa JavaScript.
+
+Catatan tahapan Planning → Eksekusi → Monitoring → Selesai tersedia di [laporan pengembangan Waterfall](docs/WATERFALL-2026-10-26.md).
 
 - Autentikasi dengan password hash, session regeneration, remember me, pembatasan percobaan login, normalisasi email, dan validasi role saat registrasi.
 - Profil serta perubahan password dengan verifikasi password saat ini.
@@ -167,3 +189,13 @@ php artisan view:cache
 ```
 
 Tests menggunakan SQLite in-memory dan HTTP fake, sehingga tidak mengubah database aplikasi atau mengirim transaksi Midtrans. Pengujian mencakup akun/profil, persetujuan dan akses campaign, privasi berita/favorit, saldo penyaluran, serta checkout, webhook, pemalsuan status, replay, refund, reversal, dan kegagalan jaringan. Uji transaksi langsung memerlukan kredensial Sandbox milik Anda.
+
+Pengujian notifikasi juga mencakup penerima yang berhak, isolasi antar akun, pengulangan webhook/status, perubahan refund, rollback, filter, pagination, serta penanda dibaca. Pengujian presentasi memeriksa seluruh logo kanal dan halaman Tentang.
+
+Uji browser tersedia pada `tests/Browser/smoke.cjs`. Dengan paket Playwright dan Chromium tersedia pada runtime Node, jalankan:
+
+```powershell
+node tests/Browser/smoke.cjs
+```
+
+Jika diperlukan, isi `PLAYWRIGHT_MODULE` dengan lokasi paket Playwright, `PHP_BINARY` dengan lokasi PHP, dan `BROWSER_EXECUTABLE` dengan lokasi Chrome/Chromium. Pengujian membuat SQLite `browser-*.sqlite` sendiri di `storage/framework/testing`, memblokir jaringan eksternal, dan memeriksa pergantian metode/biaya, logo, notifikasi, navigasi, 24 kombinasi halaman/lebar layar, serta formulir tanpa JavaScript. Tangkapan layar tersedia di `storage/framework/testing/browser-output`; `BROWSER_TEST_OUTPUT` dapat digunakan untuk mengubah lokasi hasil.
